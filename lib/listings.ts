@@ -134,16 +134,32 @@ export async function getMyDashboard(): Promise<{
   };
 }
 
+export async function getSignedInEmail(): Promise<string | null> {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  ) {
+    return null;
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const email = data?.claims?.email;
+  return typeof email === "string" && email.includes("@") ? email : null;
+}
+
 export async function consumeClick(input: {
   listingId: number;
   sourceUrl?: string | null;
   visitorHash?: string | null;
+  visitorEmail?: string | null;
 }): Promise<{ url: string } | null> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase.rpc("consume_listing_click", {
     p_listing_id: input.listingId,
     p_source_url: input.sourceUrl ?? null,
     p_visitor_hash: input.visitorHash ?? null,
+    p_visitor_email: input.visitorEmail ?? null,
   });
 
   if (error) {

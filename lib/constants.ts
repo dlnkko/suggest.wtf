@@ -1,11 +1,13 @@
 export const MIN_LISTING_USD = 20;
 export const MAX_LISTING_USD = 10000;
+export const LISTING_PRICE_OPTIONS = [20, 50, 100, 300, 500, 1000] as const;
+export type ListingPriceOption = (typeof LISTING_PRICE_OPTIONS)[number];
 export const LISTING_PRICE_USD = MIN_LISTING_USD;
-export const CLICK_COST_USD = 0.25;
+export const CLICK_COST_USD = 0.5;
 export const CLICKS_PER_LISTING = LISTING_PRICE_USD / CLICK_COST_USD;
 export const MARKDOWN_CHAR_LIMIT = 8000;
 export const BRIEF_CHAR_LIMIT = 3200;
-export const MATCH_LIMIT = 5;
+export const MATCH_LIMIT = 3;
 export const CANDIDATE_LIMIT = 12;
 export const VOYAGE_MODEL = "voyage-4-lite";
 export const VOYAGE_DIMENSIONS = 1024;
@@ -30,8 +32,25 @@ export function parseListingAmount(value: unknown): number | null {
   const raw = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   if (!Number.isFinite(raw)) return null;
   const amount = Math.round(raw * 100) / 100;
-  if (amount < MIN_LISTING_USD || amount > MAX_LISTING_USD) return null;
+  if (!(LISTING_PRICE_OPTIONS as readonly number[]).includes(amount)) return null;
   return amount;
+}
+
+export function checkoutUrlForAmount(amount: number): string | null {
+  const byAmount: Record<ListingPriceOption, string | undefined> = {
+    20: process.env.NEXT_PUBLIC_CHECKOUT_20,
+    50: process.env.NEXT_PUBLIC_CHECKOUT_50,
+    100: process.env.NEXT_PUBLIC_CHECKOUT_100,
+    300: process.env.NEXT_PUBLIC_CHECKOUT_300,
+    500: process.env.NEXT_PUBLIC_CHECKOUT_500,
+    1000: process.env.NEXT_PUBLIC_CHECKOUT_1000,
+  };
+  const exact = (LISTING_PRICE_OPTIONS as readonly number[]).includes(amount)
+    ? byAmount[amount as ListingPriceOption]
+    : undefined;
+  const fallback = process.env.NEXT_PUBLIC_CHECKOUT_URL;
+  const url = exact || fallback;
+  return url && url.length > 0 ? url : null;
 }
 
 export function clicksFromUsd(amount: number): number {

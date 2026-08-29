@@ -28,10 +28,9 @@ export async function lunaJson(instructions: string, input: string): Promise<str
     throw new Error("missing_openai_key");
   }
 
-  const model = process.env.OPENAI_MODEL ?? "gpt-5.6-luna";
   const openai = new OpenAI({ apiKey });
   const response = await openai.responses.create({
-    model,
+    model: process.env.OPENAI_MODEL ?? "gpt-5.6-luna",
     instructions,
     input,
   });

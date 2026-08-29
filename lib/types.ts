@@ -13,6 +13,7 @@ export type SiteBrief = {
   title: string;
   what_it_is: string;
   needs: string[];
+  facts: string[];
 };
 
 export type SuggestionMatch = {
@@ -51,4 +52,5 @@ export type ListingClick = {
   source_url: string | null;
   amount_usd: number;
   charged: boolean;
+  visitor_email: string | null;
 };

@@ -2,15 +2,30 @@
 
 import { Button } from "@/components/button";
 import { createClient } from "@/lib/supabase/client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const ERRORS: Record<string, string> = {
   auth: "Google sign-in didn’t finish. Try again.",
 };
 
-export function GoogleSignIn({ errorCode }: { errorCode?: string }) {
+export function GoogleSignIn({
+  errorCode,
+  next = "/list",
+  autoStart = false,
+}: {
+  errorCode?: string;
+  next?: string;
+  autoStart?: boolean;
+}) {
   const [pending, setPending] = useState(false);
+  const started = useRef(false);
   const error = errorCode ? ERRORS[errorCode] : null;
+
+  useEffect(() => {
+    if (!autoStart || errorCode || started.current) return;
+    started.current = true;
+    void continueWithGoogle();
+  }, [autoStart, errorCode]);
 
   async function continueWithGoogle() {
     setPending(true);
@@ -19,7 +34,7 @@ export function GoogleSignIn({ errorCode }: { errorCode?: string }) {
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${origin}/auth/callback?next=/list`,
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     if (signInError) {
@@ -42,10 +57,6 @@ export function GoogleSignIn({ errorCode }: { errorCode?: string }) {
           Continue with Google
         </span>
       </Button>
-      <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
-        After you sign in, you’ll write your listing once. Credits start at $20
-        and go up to $10,000.
-      </p>
     </div>
   );
 }

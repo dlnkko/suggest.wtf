@@ -47,3 +47,7 @@ export function displayHost(url: string): string {
     return url;
   }
 }
+
+export function faviconUrl(pageUrl: string): string {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(displayHost(pageUrl))}&sz=64`;
+}

@@ -1,4 +1,4 @@
-import { consumeClick, hashVisitor } from "@/lib/listings";
+import { consumeClick, getSignedInEmail, hashVisitor } from "@/lib/listings";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -15,12 +15,14 @@ export async function GET(
   const forwarded = request.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip");
   const visitor = hashVisitor(ip, request.headers.get("user-agent"));
+  const visitorEmail = await getSignedInEmail();
 
   try {
     const result = await consumeClick({
       listingId,
       sourceUrl,
       visitorHash: visitor,
+      visitorEmail,
     });
 
     if (!result?.url) {

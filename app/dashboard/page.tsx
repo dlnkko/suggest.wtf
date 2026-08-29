@@ -1,0 +1,76 @@
+import { signOut } from "@/app/list/actions";
+import { Button } from "@/components/button";
+import { GoogleSignIn } from "@/components/google-sign-in";
+import { ListingDashboard } from "@/components/listing-dashboard";
+import { takeCheckoutReturn } from "@/lib/checkout-return";
+import { getMyDashboard, getSignedInUserId } from "@/lib/listings";
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; paid?: string; topup?: string }>;
+}) {
+  const { error, paid, topup } = await searchParams;
+  const checkout = await takeCheckoutReturn();
+  const notice =
+    paid === "1" || checkout === "paid"
+      ? "paid"
+      : topup === "1" || checkout === "topup"
+        ? "topup"
+        : undefined;
+
+  const userId = await getSignedInUserId();
+
+  if (!userId) {
+    return (
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-6 py-16 sm:px-10 sm:py-20">
+        <div className="rise flex-1">
+          <h1 className="headline-page">Opening your dashboard.</h1>
+          <p className="mt-4 max-w-md text-[15px] leading-7 text-[var(--muted)]">
+            Sign in with the same Google account you used to list.
+          </p>
+          <GoogleSignIn errorCode={error} next="/dashboard" autoStart />
+        </div>
+      </main>
+    );
+  }
+
+  const dashboard = await getMyDashboard();
+
+  if (dashboard) {
+    return (
+      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16 sm:px-10 sm:py-20">
+        <ListingDashboard
+          listing={dashboard.listing}
+          clicks={dashboard.clicks}
+          notice={notice}
+          errorCode={error}
+        />
+      </main>
+    );
+  }
+
+  if (notice) {
+    return (
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-6 py-16 sm:px-10 sm:py-20">
+        <div className="rise flex-1">
+          <h1 className="headline-page">Opening your dashboard.</h1>
+          <p className="mt-4 max-w-md text-[15px] leading-7 text-[var(--muted)]">
+            We couldn’t find a listing on this Google account. Sign in with the
+            account you used when you listed.
+          </p>
+          <form action={signOut} className="mt-10">
+            <Button type="submit" variant="ghost" className="px-0 py-2 text-sm">
+              Sign out
+            </Button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  redirect("/list");
+}

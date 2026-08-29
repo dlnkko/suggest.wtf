@@ -2,12 +2,10 @@
 
 import { Button } from "@/components/button";
 import { KindSelect } from "@/components/kind-select";
+import { PricePick } from "@/components/price-pick";
 import {
-  CLICK_COST_USD,
-  MAX_LISTING_USD,
   MIN_LISTING_USD,
   clicksFromUsd,
-  parseListingAmount,
 } from "@/lib/constants";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -16,14 +14,13 @@ import { createListing } from "@/app/list/actions";
 const ERRORS: Record<string, string> = {
   incomplete: "Fill every field with a real URL.",
   failed: "We couldn’t publish that. Check the details and try again.",
-  amount: `Spend at least $${MIN_LISTING_USD}, up to $${MAX_LISTING_USD.toLocaleString("en")}.`,
+  amount: "Pick $20, $50, $100, $300, $500, or $1,000.",
   auth: "Sign in with Google first.",
 };
 
 export function ListingForm({ errorCode }: { errorCode?: string }) {
-  const [amount, setAmount] = useState(String(MIN_LISTING_USD));
-  const parsed = parseListingAmount(amount);
-  const clicks = parsed ? clicksFromUsd(parsed) : 0;
+  const [amount, setAmount] = useState(MIN_LISTING_USD);
+  const clicks = clicksFromUsd(amount);
   const error = errorCode ? ERRORS[errorCode] : null;
 
   return (
@@ -69,38 +66,20 @@ export function ListingForm({ errorCode }: { errorCode?: string }) {
       </Field>
 
       <Field label="Credits in USD" htmlFor="amount">
-        <input
-          id="amount"
-          name="amount"
-          type="number"
-          required
-          min={MIN_LISTING_USD}
-          max={MAX_LISTING_USD}
-          step="1"
-          inputMode="numeric"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          className="field-input tabular-nums"
-        />
+        <input type="hidden" id="amount" name="amount" value={amount} />
+        <PricePick value={amount} onChange={setAmount} />
       </Field>
 
       <p className="text-sm leading-6 text-[var(--muted)]">
-        {parsed ? (
-          <>
-            ${parsed.toLocaleString("en")} becomes {clicks.toLocaleString("en")}{" "}
-            clicks. Each visit costs ${CLICK_COST_USD.toFixed(2)}.
-          </>
-        ) : (
-          <>Minimum is ${MIN_LISTING_USD}. Nothing below that is accepted.</>
-        )}
+        ${amount.toLocaleString("en")} is a maximum of {clicks.toLocaleString("en")}{" "}
+        clicks.
       </p>
 
       <Button
         type="submit"
         className="mt-1 w-full rounded-2xl px-5 py-4 text-sm"
-        disabled={!parsed}
       >
-        Pay ${parsed ? parsed.toLocaleString("en") : MIN_LISTING_USD} and get listed
+        Pay ${amount.toLocaleString("en")} and get listed
       </Button>
 
       <p className="text-sm leading-6 text-[var(--muted)]">

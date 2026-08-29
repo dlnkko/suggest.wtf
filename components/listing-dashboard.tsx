@@ -1,22 +1,17 @@
 "use client";
 
 import { Button } from "@/components/button";
-import {
-  CLICK_COST_USD,
-  KIND_LABELS,
-  MAX_LISTING_USD,
-  MIN_LISTING_USD,
-  clicksFromUsd,
-  parseListingAmount,
-} from "@/lib/constants";
-import { displayHost } from "@/lib/url";
+import { ListedNotice } from "@/components/listed-notice";
+import { PricePick } from "@/components/price-pick";
+import { MIN_LISTING_USD, clicksFromUsd } from "@/lib/constants";
+import { faviconUrl } from "@/lib/url";
 import type { ListingClick, ListingDashboard } from "@/lib/types";
 import { useState } from "react";
 import { signOut, topUpCredits } from "@/app/list/actions";
 
 const ERRORS: Record<string, string> = {
   failed: "We couldn’t add those credits. Try again.",
-  amount: `Spend at least $${MIN_LISTING_USD}, up to $${MAX_LISTING_USD.toLocaleString("en")}.`,
+  amount: "Pick $20, $50, $100, $300, $500, or $1,000.",
 };
 
 export function ListingDashboard({
@@ -31,28 +26,32 @@ export function ListingDashboard({
   errorCode?: string;
 }) {
   const error = errorCode ? ERRORS[errorCode] : null;
+  const sameCopy = listing.tagline.trim() === listing.description.trim();
 
   return (
     <div>
-      {notice === "paid" ? (
-        <p className="rise text-sm text-[var(--muted)]">You’re live in the catalog.</p>
-      ) : null}
+      {notice === "paid" ? <ListedNotice compact /> : null}
       {notice === "topup" ? (
         <p className="rise text-sm text-[var(--muted)]">Credits added.</p>
       ) : null}
 
       <div className="rise" style={notice ? { animationDelay: "80ms" } : undefined}>
-        <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-          {KIND_LABELS[listing.kind]} · {displayHost(listing.url)}
-        </p>
-        <h1 className="display mt-3 text-[2.6rem] leading-tight sm:text-5xl">
-          {listing.name}
-        </h1>
+        <div className={`${notice ? "mt-5" : "mt-1"} flex items-center gap-3.5`}>
+          <img
+            src={faviconUrl(listing.url)}
+            alt=""
+            width={44}
+            height={44}
+            className="site-favicon"
+          />
+          <h1 className="headline-page">{listing.name}</h1>
+        </div>
         <p className="mt-4 text-[15px] leading-7 text-[var(--muted)]">{listing.tagline}</p>
-        <p className="mt-3 text-[15px] leading-7 text-[var(--muted)]">{listing.description}</p>
-        <p className="mt-4 text-sm text-[var(--muted)]">
-          This listing is locked. You can add credits, not edit the copy.
-        </p>
+        {!sameCopy ? (
+          <p className="mt-3 text-[15px] leading-7 text-[var(--muted)]">
+            {listing.description}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -66,7 +65,7 @@ export function ListingDashboard({
       </div>
 
       <p className="rise mt-6 text-sm text-[var(--muted)]" style={{ animationDelay: "240ms" }}>
-        Status: {statusLabel(listing.status)}. Each visit costs ${CLICK_COST_USD.toFixed(2)}.
+        Status: {statusLabel(listing.status)}. Click counts are a maximum.
       </p>
 
       <section className="rise mt-12" style={{ animationDelay: "280ms" }}>
@@ -85,10 +84,15 @@ export function ListingDashboard({
                 key={click.id}
                 className="flex items-center justify-between gap-4 py-3.5 text-sm"
               >
-                <span className="text-[var(--muted)]">
-                  {new Date(click.created_at).toLocaleString("en")}
-                </span>
-                <span className="tabular-nums">
+                <div className="min-w-0">
+                  <p className="truncate tracking-tight">
+                    {click.visitor_email || "Unknown"}
+                  </p>
+                  <p className="mt-0.5 text-[var(--muted)]">
+                    {new Date(click.created_at).toLocaleString("en")}
+                  </p>
+                </div>
+                <span className="shrink-0 tabular-nums text-[var(--muted)]">
                   {click.charged ? `-$${Number(click.amount_usd).toFixed(2)}` : "not charged"}
                 </span>
               </li>
@@ -107,46 +111,25 @@ export function ListingDashboard({
 }
 
 function CreditsForm({ error }: { error: string | null }) {
-  const [amount, setAmount] = useState(String(MIN_LISTING_USD));
-  const parsed = parseListingAmount(amount);
-  const clicks = parsed ? clicksFromUsd(parsed) : 0;
+  const [amount, setAmount] = useState(MIN_LISTING_USD);
+  const clicks = clicksFromUsd(amount);
 
   return (
     <form action={topUpCredits} className="mt-5 flex flex-col gap-4">
       {error ? <p className="text-sm text-[#9a3412]">{error}</p> : null}
-      <label className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <span className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
           Amount in USD
         </span>
-        <input
-          name="amount"
-          type="number"
-          required
-          min={MIN_LISTING_USD}
-          max={MAX_LISTING_USD}
-          step="1"
-          inputMode="numeric"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-          className="field-input tabular-nums"
-        />
-      </label>
+        <input type="hidden" name="amount" value={amount} />
+        <PricePick value={amount} onChange={setAmount} />
+      </div>
       <p className="text-sm leading-6 text-[var(--muted)]">
-        {parsed ? (
-          <>
-            +{clicks.toLocaleString("en")} clicks for ${parsed.toLocaleString("en")}.
-            Minimum ${MIN_LISTING_USD}.
-          </>
-        ) : (
-          <>Minimum is ${MIN_LISTING_USD}. Nothing below that is accepted.</>
-        )}
+        ${amount.toLocaleString("en")} is a maximum of {clicks.toLocaleString("en")}{" "}
+        clicks.
       </p>
-      <Button
-        type="submit"
-        className="w-full rounded-2xl px-5 py-4 text-sm sm:w-auto"
-        disabled={!parsed}
-      >
-        Add ${parsed ? parsed.toLocaleString("en") : MIN_LISTING_USD}
+      <Button type="submit" className="w-full rounded-2xl px-5 py-4 text-sm sm:w-auto">
+        Add ${amount.toLocaleString("en")}
       </Button>
     </form>
   );
