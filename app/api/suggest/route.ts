@@ -1,0 +1,69 @@
+import { scrapeLanding } from "@/lib/firecrawl";
+import { getCatalog } from "@/lib/listings";
+import { matchListings } from "@/lib/match";
+import { normalizeUrl } from "@/lib/url";
+
+export const maxDuration = 60;
+
+export async function POST(request: Request) {
+  let body: { url?: unknown };
+  try {
+    body = (await request.json()) as { url?: unknown };
+  } catch {
+    return Response.json({ error: "Send a URL to analyze." }, { status: 400 });
+  }
+
+  const url = typeof body.url === "string" ? normalizeUrl(body.url) : null;
+  if (!url) {
+    return Response.json(
+      { error: "Paste a URL only (https://your-site.com)." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const [scraped, listings] = await Promise.all([
+      scrapeLanding(url),
+      getCatalog(),
+    ]);
+
+    const matched = await matchListings({
+      url,
+      title: scraped.title,
+      markdown: scraped.markdown,
+      listings,
+    });
+
+    return Response.json({
+      url,
+      site: matched.site,
+      matches: matched.matches,
+    });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "missing_firecrawl_key") {
+      return Response.json(
+        { error: "FIRECRAWL_API_KEY is missing in .env.local." },
+        { status: 500 },
+      );
+    }
+    if (code === "missing_openai_key") {
+      return Response.json(
+        { error: "OPENAI_API_KEY is missing in .env.local." },
+        { status: 500 },
+      );
+    }
+    if (code === "empty_scrape") {
+      return Response.json(
+        { error: "We couldn’t read that site. Try another public URL." },
+        { status: 422 },
+      );
+    }
+
+    console.error(error);
+    return Response.json(
+      { error: "We couldn’t analyze that site. Try again." },
+      { status: 500 },
+    );
+  }
+}
