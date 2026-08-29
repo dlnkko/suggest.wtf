@@ -17,16 +17,17 @@ export function HeroHeadline() {
   const word = WORDS[index];
 
   return (
-    <h1 className="display text-[2.75rem] leading-[1.08] sm:text-[3.5rem]">
-      Paste your{" "}
-      <em key={word} className="word-swap">
-        {word}
-      </em>{" "}
-      URL
-      <br />
-      <em className="text-[var(--muted)]">
+    <div>
+      <h1 className="headline-title">
+        Paste your{" "}
+        <em key={word} className="word-swap">
+          {word}
+        </em>{" "}
+        URL
+      </h1>
+      <p className="headline-sub">
         Get the right match for what you’re building.
-      </em>
-    </h1>
+      </p>
+    </div>
   );
 }
