@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/button";
-import { createClient } from "@/lib/supabase/client";
+import { startGoogleOAuth } from "@/lib/supabase/oauth";
 import { useEffect, useRef, useState } from "react";
 
 const ERRORS: Record<string, string> = {
@@ -18,8 +18,9 @@ export function GoogleSignIn({
   autoStart?: boolean;
 }) {
   const [pending, setPending] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const started = useRef(false);
-  const error = errorCode ? ERRORS[errorCode] : null;
+  const error = localError ?? (errorCode ? ERRORS[errorCode] : null);
 
   useEffect(() => {
     if (!autoStart || errorCode || started.current) return;
@@ -29,15 +30,10 @@ export function GoogleSignIn({
 
   async function continueWithGoogle() {
     setPending(true);
-    const supabase = createClient();
-    const origin = window.location.origin;
-    const { error: signInError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (signInError) {
+    setLocalError(null);
+    const message = await startGoogleOAuth(next);
+    if (message) {
+      setLocalError(message);
       setPending(false);
     }
   }

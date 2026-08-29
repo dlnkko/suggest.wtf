@@ -1,3 +1,4 @@
+import { isLocalHost, publicSiteOrigin } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -34,17 +35,24 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
-      }
-      if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      }
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${appOrigin(request, origin)}${next}`);
     }
   }
 
-  return NextResponse.redirect(withAuthError(origin, next));
+  return NextResponse.redirect(withAuthError(appOrigin(request, origin), next));
+}
+
+function appOrigin(request: Request, origin: string): string {
+  if (isLocalHost(origin)) {
+    return process.env.NODE_ENV === "development" ? origin : publicSiteOrigin();
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost === "www.suggest.wtf" || forwardedHost === "suggest.wtf") {
+    return publicSiteOrigin();
+  }
+  if (forwardedHost && !isLocalHost(forwardedHost)) {
+    return `https://${forwardedHost}`;
+  }
+  return origin;
 }
