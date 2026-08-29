@@ -7,6 +7,14 @@ function asKind(value: string): ListingKind {
   return isListingKind(value) ? value : "freelancer";
 }
 
+type ListingEmbedInput = {
+  id: number;
+  name: string;
+  kind: ListingKind;
+  tagline: string;
+  description: string;
+};
+
 export async function searchListingsByEmbedding(
   query: number[],
   matchCount = 16,
@@ -69,21 +77,20 @@ export async function embedMissingListings(): Promise<void> {
     throw new Error(error.message);
   }
 
-  const missing = (data ?? []).map(
-    (row: {
-      id: number;
-      name: string;
-      kind: string;
-      tagline: string;
-      description: string;
-    }) => ({
-      id: Number(row.id),
-      name: String(row.name),
-      kind: asKind(String(row.kind)),
-      tagline: String(row.tagline),
-      description: String(row.description),
-    }),
-  );
+  const rows: Array<{
+    id: unknown;
+    name: unknown;
+    kind: unknown;
+    tagline: unknown;
+    description: unknown;
+  }> = Array.isArray(data) ? data : [];
+  const missing: ListingEmbedInput[] = rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name),
+    kind: asKind(String(row.kind)),
+    tagline: String(row.tagline),
+    description: String(row.description),
+  }));
 
   if (missing.length === 0) return;
 
