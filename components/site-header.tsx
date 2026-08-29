@@ -3,14 +3,14 @@ import { getMyDashboard, getSignedInUserId } from "@/lib/listings";
 import Link from "next/link";
 
 export async function SiteHeader() {
-  const userId = await getSignedInUserId();
   let listed = false;
-  if (userId) {
-    try {
+  try {
+    const userId = await getSignedInUserId();
+    if (userId) {
       listed = Boolean(await getMyDashboard());
-    } catch {
-      listed = false;
     }
+  } catch {
+    listed = false;
   }
 
   return (

@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   description: "Paste your URL. We’ll suggest startups, apps, freelancers, creators, and agencies who paid to be here.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
