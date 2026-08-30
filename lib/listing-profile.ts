@@ -131,7 +131,10 @@ export async function profileMissingListings(limit = 2): Promise<void> {
   }
 
   const rows = (Array.isArray(data) ? data : []).slice(0, limit);
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
     try {
       await enrichListingProfile(
         {

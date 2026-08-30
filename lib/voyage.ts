@@ -18,19 +18,33 @@ export async function embedTexts(
     return [];
   }
 
-  const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+  const body = JSON.stringify({
+    input: cleaned,
+    model: VOYAGE_MODEL,
+    input_type: inputType,
+    output_dimension: VOYAGE_DIMENSIONS,
+  });
+
+  let response = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      input: cleaned,
-      model: VOYAGE_MODEL,
-      input_type: inputType,
-      output_dimension: VOYAGE_DIMENSIONS,
-    }),
+    body,
   });
+
+  for (let attempt = 0; attempt < 2 && response.status === 429; attempt += 1) {
+    await sleep(retryWaitMs(response));
+    response = await fetch("https://api.voyageai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+  }
 
   if (!response.ok) {
     throw new Error(`voyage_${response.status}`);
@@ -48,6 +62,19 @@ export async function embedTexts(
     }
     return embedding;
   });
+}
+
+function retryWaitMs(response: Response): number {
+  const raw = response.headers.get("retry-after");
+  const seconds = raw ? Number(raw) : NaN;
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.min(Math.ceil(seconds * 1000), 8000);
+  }
+  return 1500;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function listingEmbedText(input: {
