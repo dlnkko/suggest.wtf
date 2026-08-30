@@ -6,7 +6,7 @@ const memory = new Map<string, SuggestResponse>();
 const inflight = new Map<string, Promise<SuggestResponse>>();
 
 function storageKey(url: string): string {
-  return `suggest:v4:${url}`;
+  return `suggest:v5:${url}`;
 }
 
 export function readSuggestCache(
@@ -85,5 +85,6 @@ function isFresh(result: SuggestResponse, catalogCount: number): boolean {
     typeof result.catalog_count === "number"
       ? result.catalog_count
       : Number(String(result.catalog_revision ?? "").split(":")[0]) || 0;
+  if (catalogCount < saved) return false;
   return catalogCount - saved < CATALOG_REFRESH_EVERY;
 }

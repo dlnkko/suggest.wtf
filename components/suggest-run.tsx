@@ -134,21 +134,18 @@ export function SuggestRun({
 
           {result.matches.length === 0 ? (
             <p className="mt-12 text-sm leading-6 text-[var(--muted)]">
-              Nobody in the catalog fits yet. If you can help this kind of
-              site,{" "}
-              <Button
-                href="/list"
-                variant="ghost"
-                className="inline rounded-md px-1 py-0.5 text-sm underline decoration-[var(--line)] underline-offset-4"
-              >
-                get listed for $20.
-              </Button>
+              Nobody in the catalog fits yet.
             </p>
           ) : (
             <div className="mt-12">
               <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
                 Leverage
               </p>
+              {!result.matches.some((match) => !match.house) ? (
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  Starter picks. Nobody has paid to own this spot yet.
+                </p>
+              ) : null}
               <ul className="mt-4 flex flex-col gap-4">
                 {result.matches.map((match, index) => (
                   <li
@@ -167,7 +164,7 @@ export function SuggestRun({
                         />
                         <div className="min-w-0">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-                            {KIND_LABELS[match.kind]}
+                            {match.house ? "Catalog" : KIND_LABELS[match.kind]}
                           </p>
                           <h3 className="match-name mt-1">{match.name}</h3>
                         </div>
@@ -186,6 +183,31 @@ export function SuggestRun({
               </ul>
             </div>
           )}
+
+          {result.site.needs.length > 0 ? (
+            <div className="mt-12">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                Openings
+              </p>
+              <ul className="mt-4 flex flex-col gap-3">
+                {result.site.needs.map((need) => (
+                  <li key={need} className="text-sm leading-6 text-[var(--muted)]">
+                    <span className="text-[var(--foreground)]">{need}</span>
+                    <span className="block">Nobody paid to own this yet.</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="mt-12">
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              Your product can show up here when someone like you pastes a URL.
+            </p>
+            <Button href="/list" variant="pill" className="mt-4 px-4 py-2 text-sm">
+              Get listed for $20
+            </Button>
+          </div>
         </section>
       ) : null}
     </div>

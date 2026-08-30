@@ -1,5 +1,4 @@
--- Temporary catalog seed. Delete later with:
--- delete from public.listings where 'seed_test' = any(tags);
+-- Replaced by scripts/house-catalog.sql. Do not apply.
 
 insert into public.listings (name, kind, url, tagline, description, tags, credit_balance_usd, status)
 values

@@ -22,7 +22,7 @@ export async function getCatalog(): Promise<CatalogListing[]> {
   const supabase = createSupabaseServer();
   const withProfile = await supabase
     .from("catalog")
-    .select("id, name, kind, url, tagline, description, profile")
+    .select("id, name, kind, url, tagline, description, profile, house")
     .order("id", { ascending: true });
 
   const result = withProfile.error
@@ -44,6 +44,7 @@ export async function getCatalog(): Promise<CatalogListing[]> {
     tagline: String(row.tagline),
     description: String(row.description),
     profile: parseListingProfile("profile" in row ? row.profile : null),
+    house: Boolean("house" in row && row.house),
   }));
 }
 

@@ -289,14 +289,7 @@ async function pickMatches(
     const reason = cleanReason(brief, listing, match.reason);
     if (!reason) continue;
     seen.add(listing.id);
-    matches.push({
-      id: listing.id,
-      name: listing.name,
-      kind: listing.kind,
-      url: listing.url,
-      tagline: listing.tagline,
-      reason,
-    });
+    matches.push(toMatch(listing, reason));
     if (matches.length === MATCH_LIMIT) break;
   }
 
@@ -338,14 +331,7 @@ async function reasonMatches(
     if (match.keep === false) continue;
     const reason = cleanReason(brief, listing, match.reason);
     if (!reason) continue;
-    matches.push({
-      id: listing.id,
-      name: listing.name,
-      kind: listing.kind,
-      url: listing.url,
-      tagline: listing.tagline,
-      reason,
-    });
+    matches.push(toMatch(listing, reason));
     if (matches.length === MATCH_LIMIT) break;
   }
 
@@ -361,14 +347,21 @@ function fallbackFromScrape(
   const preferred = candidates.filter((listing) => !isStaffingListing(listing));
   const pool = preferred.length > 0 ? preferred : candidates;
 
-  return pool.slice(0, 3).map((listing) => ({
+  return pool.slice(0, 3).map((listing) =>
+    toMatch(listing, scrapeFallbackReason(listing, observed)),
+  );
+}
+
+function toMatch(listing: CatalogListing, reason: string): SuggestionMatch {
+  return {
     id: listing.id,
     name: listing.name,
     kind: listing.kind,
     url: listing.url,
     tagline: listing.tagline,
-    reason: scrapeFallbackReason(listing, observed),
-  }));
+    reason,
+    house: Boolean(listing.house),
+  };
 }
 
 function scrapeFallbackReason(listing: CatalogListing, observed: string): string {

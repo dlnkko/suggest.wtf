@@ -16,6 +16,7 @@ export type CatalogListing = {
   tagline: string;
   description: string;
   profile: ListingProfile | null;
+  house: boolean;
 };
 
 export type SiteBrief = {
@@ -32,6 +33,7 @@ export type SuggestionMatch = {
   url: string;
   tagline: string;
   reason: string;
+  house: boolean;
 };
 
 export type SuggestResponse = {
