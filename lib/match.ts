@@ -211,7 +211,8 @@ async function retrieveCandidates(
     const usable = withScore.length > 0 ? withScore : ranked;
     const top = usable[0]?.similarity ?? 0;
     const band = Math.max(0.1, top - 0.16);
-    const eligible = usable.filter((row) => row.similarity >= band);
+    const inBand = usable.filter((row) => row.similarity >= band);
+    const eligible = inBand.length > 0 ? inBand : usable.slice(0, CANDIDATE_LIMIT);
 
     const head = eligible.slice(0, Math.ceil(CANDIDATE_LIMIT / 2));
     const rest = eligible.slice(head.length);

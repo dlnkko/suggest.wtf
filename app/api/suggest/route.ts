@@ -28,12 +28,7 @@ export async function POST(request: Request) {
 
   try {
     const scraped = await scrapeLanding(url);
-    let listings: Awaited<ReturnType<typeof getCatalog>> = [];
-    try {
-      listings = await getCatalog();
-    } catch (catalogError) {
-      console.error("catalog_failed", catalogError);
-    }
+    const listings = await getCatalog();
 
     try {
       const matched = await matchListings({

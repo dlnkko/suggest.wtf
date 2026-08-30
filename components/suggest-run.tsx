@@ -131,9 +131,8 @@ export function SuggestRun({ url }: { url: string }) {
                 variant="ghost"
                 className="inline rounded-md px-1 py-0.5 text-sm underline decoration-[var(--line)] underline-offset-4"
               >
-                get listed for $20
+                get listed for $20.
               </Button>
-              .
             </p>
           ) : (
             <div className="mt-12">

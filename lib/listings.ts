@@ -20,23 +20,30 @@ function asKind(value: string): ListingKind {
 
 export async function getCatalog(): Promise<CatalogListing[]> {
   const supabase = createSupabaseServer();
-  const { data, error } = await supabase
+  const withProfile = await supabase
     .from("catalog")
     .select("id, name, kind, url, tagline, description, profile")
     .order("id", { ascending: true });
 
-  if (error) {
-    throw new Error(error.message);
+  const result = withProfile.error
+    ? await supabase
+        .from("catalog")
+        .select("id, name, kind, url, tagline, description")
+        .order("id", { ascending: true })
+    : withProfile;
+
+  if (result.error) {
+    throw new Error(result.error.message);
   }
 
-  return (data ?? []).map((row) => ({
+  return (result.data ?? []).map((row) => ({
     id: Number(row.id),
     name: String(row.name),
     kind: asKind(String(row.kind)),
     url: String(row.url),
     tagline: String(row.tagline),
     description: String(row.description),
-    profile: parseListingProfile(row.profile),
+    profile: parseListingProfile("profile" in row ? row.profile : null),
   }));
 }
 
