@@ -27,23 +27,40 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [scraped, listings] = await Promise.all([
-      scrapeLanding(url),
-      getCatalog(),
-    ]);
+    const scraped = await scrapeLanding(url);
+    let listings: Awaited<ReturnType<typeof getCatalog>> = [];
+    try {
+      listings = await getCatalog();
+    } catch (catalogError) {
+      console.error("catalog_failed", catalogError);
+    }
 
-    const matched = await matchListings({
-      url,
-      title: scraped.title,
-      markdown: scraped.markdown,
-      listings,
-    });
+    try {
+      const matched = await matchListings({
+        url,
+        title: scraped.title,
+        markdown: scraped.markdown,
+        listings,
+      });
 
-    return Response.json({
-      url,
-      site: matched.site,
-      matches: matched.matches,
-    });
+      return Response.json({
+        url,
+        site: matched.site,
+        matches: matched.matches,
+      });
+    } catch (matchError) {
+      console.error("match_failed", matchError);
+      return Response.json({
+        url,
+        site: {
+          title: scraped.title || url,
+          what_it_is: scraped.markdown.split("\n").find((line) => line.trim()) || url,
+          needs: [],
+          facts: [],
+        },
+        matches: [],
+      });
+    }
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "missing_firecrawl_key") {
