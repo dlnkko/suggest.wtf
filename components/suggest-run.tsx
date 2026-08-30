@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/button";
 import { KIND_LABELS } from "@/lib/constants";
+import { stripProcessTalk } from "@/lib/reason-copy";
+import { readSuggestCache, suggestForUrl } from "@/lib/suggest-cache";
 import type { SuggestResponse } from "@/lib/types";
 import { faviconUrl } from "@/lib/url";
 import { useEffect, useState } from "react";
@@ -16,14 +18,31 @@ function siteName(title: string): string {
   return title.split(/\s+[—–|:]\s+/)[0]?.trim() || title;
 }
 
+function cachedResult(url: string): SuggestResponse | null {
+  if (typeof window === "undefined") return null;
+  return readSuggestCache(url);
+}
+
 export function SuggestRun({ url }: { url: string }) {
-  const [loading, setLoading] = useState(true);
+  const [result, setResult] = useState<SuggestResponse | null>(() => cachedResult(url));
+  const [loading, setLoading] = useState(() => !cachedResult(url));
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<SuggestResponse | null>(null);
 
   useEffect(() => {
+    const existing = readSuggestCache(url);
+    if (existing) {
+      setResult(existing);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    setStep(0);
     const timers = [
       window.setTimeout(() => setStep(1), 1200),
       window.setTimeout(() => setStep(2), 2800),
@@ -31,17 +50,7 @@ export function SuggestRun({ url }: { url: string }) {
 
     async function run() {
       try {
-        const response = await fetch("/api/suggest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        });
-        const payload = (await response.json()) as SuggestResponse & {
-          error?: string;
-        };
-        if (!response.ok) {
-          throw new Error(payload.error || "We couldn’t analyze that URL.");
-        }
+        const payload = await suggestForUrl(url);
         if (!cancelled) setResult(payload);
       } catch (err) {
         if (!cancelled) {
@@ -57,6 +66,27 @@ export function SuggestRun({ url }: { url: string }) {
     return () => {
       cancelled = true;
       timers.forEach(clearTimeout);
+    };
+  }, [url]);
+
+  useEffect(() => {
+    function restore() {
+      const existing = readSuggestCache(url);
+      if (!existing) return;
+      setResult(existing);
+      setLoading(false);
+      setError(null);
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") restore();
+    }
+
+    window.addEventListener("pageshow", restore);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [url]);
 
@@ -141,7 +171,7 @@ export function SuggestRun({ url }: { url: string }) {
                         Visit
                       </Button>
                     </div>
-                    <p className="match-why mt-5">{match.reason}</p>
+                    <p className="match-why mt-5">{stripProcessTalk(match.reason)}</p>
                   </li>
                 ))}
               </ul>

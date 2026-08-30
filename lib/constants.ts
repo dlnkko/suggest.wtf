@@ -36,8 +36,17 @@ export function parseListingAmount(value: unknown): number | null {
   return amount;
 }
 
+const CHECKOUT_BY_AMOUNT: Record<ListingPriceOption, string> = {
+  20: "https://whop.com/checkout/plan_qPDRCdOk5RxhS",
+  50: "https://whop.com/checkout/plan_V5WafiBtSboat",
+  100: "https://whop.com/checkout/plan_ocp5Xf6DRw1dY",
+  300: "",
+  500: "https://whop.com/checkout/plan_GmUJWtYMShr73",
+  1000: "https://whop.com/checkout/plan_10NB6pJb9cDhO",
+};
+
 export function checkoutUrlForAmount(amount: number): string | null {
-  const byAmount: Record<ListingPriceOption, string | undefined> = {
+  const fromEnv: Record<ListingPriceOption, string | undefined> = {
     20: process.env.NEXT_PUBLIC_CHECKOUT_20,
     50: process.env.NEXT_PUBLIC_CHECKOUT_50,
     100: process.env.NEXT_PUBLIC_CHECKOUT_100,
@@ -46,7 +55,7 @@ export function checkoutUrlForAmount(amount: number): string | null {
     1000: process.env.NEXT_PUBLIC_CHECKOUT_1000,
   };
   const exact = (LISTING_PRICE_OPTIONS as readonly number[]).includes(amount)
-    ? byAmount[amount as ListingPriceOption]
+    ? fromEnv[amount as ListingPriceOption] || CHECKOUT_BY_AMOUNT[amount as ListingPriceOption]
     : undefined;
   const fallback = process.env.NEXT_PUBLIC_CHECKOUT_URL;
   const url = exact || fallback;

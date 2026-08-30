@@ -8,6 +8,7 @@ import {
   searchListingsByEmbedding,
 } from "./embeddings";
 import { lunaJson, parseJsonObject } from "./openai";
+import { stripProcessTalk } from "./reason-copy";
 import type { CatalogListing, SiteBrief, SuggestionMatch } from "./types";
 import { displayHost } from "./url";
 import { embedTexts } from "./voyage";
@@ -37,27 +38,27 @@ Rules:
 - search_queries: 3 to 5 queries for complementary STARTUPS, apps, or agencies already in a catalog (payments, CRM, analytics, email, auth, legal, hosting). Do not search for freelance designers or copywriters.
 - Prefer complementary companies over clones. English. No fluff.`;
 
-const PICK_SYSTEM = `You pick catalog listings that this URL actually needs, using only the scraped page.
+const PICK_SYSTEM = `You pick catalog listings that this URL actually needs, using only what is visible on their landing page.
 
 Return JSON only:
 {"matches":[{"id":1,"reason":""}]}
 
 Rules:
 - Only use IDs from the candidate list. Never invent IDs.
-- Return between 1 and ${MATCH_LIMIT} matches. Never return 0 if any candidate fills a real gap on the page. Prefer 3 distinct openings when the scrape supports them. Do not pad with weak picks just to hit 3.
+- Return between 1 and ${MATCH_LIMIT} matches. Never return 0 if any candidate fills a real gap on the page. Prefer 3 distinct openings when their site supports them. Do not pad with weak picks just to hit 3.
 - Do not recommend a launcher, email client, or adjacent consumer app unless the page itself is about that job.
 - Do not recommend clones of the visitor's product.
 - Cover distinct needs. Do not pick two CRMs or two analytics tools.
-- reason: 2 sentences, specific to THIS scrape. Mention something visible on their page (offer, CTA, audience, missing pricing, missing login, etc.). Then say how this listing fills that hole. Do not start with the visitor's name. Do not restate the tagline. English.`;
+- reason: 2 sentences, as if you noticed something on their startup, landing page, product, agency site, or company URL. Mention a concrete detail (offer, CTA, audience, missing pricing, missing login). Then say how this listing fills that hole. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
 
-const REASON_SYSTEM = `You write why a catalog listing is necessary for a scraped site.
+const REASON_SYSTEM = `You write why a catalog listing is necessary for this URL.
 
 Return JSON only:
 {"matches":[{"id":1,"reason":"","keep":true}]}
 
 Rules:
-- keep=true only if the scrape shows this listing is actually needed now.
-- reason: 2 personalized sentences from the scrape. No visitor name prefix. No generic "worth a look" lines.
+- keep=true only if their landing page shows this listing is actually needed now.
+- reason: 2 personalized sentences about what you noticed on their site. No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction.
 - If it is a nice-to-have, set keep=false and reason="".`;
 
 export async function matchListings(input: {
@@ -258,7 +259,7 @@ async function pickMatches(
       brief.facts.length ? `Facts from their page: ${brief.facts.join("; ")}` : "",
       brief.needs.length ? `Growth openings: ${brief.needs.join("; ")}` : "",
       "",
-      "Scraped landing page:",
+      "Their landing page:",
       excerpt.slice(0, 2400),
       "",
       "Candidates (only these IDs):",
@@ -314,7 +315,7 @@ async function reasonMatches(
       brief.facts.length ? `Facts from their page: ${brief.facts.join("; ")}` : "",
       brief.needs.length ? `Openings: ${brief.needs.join("; ")}` : "",
       "",
-      "Scraped landing page:",
+      "Their landing page:",
       excerpt.slice(0, 2400),
       "",
       "Candidates:",
@@ -401,7 +402,7 @@ function cleanReason(
   listing: CatalogListing,
   rawReason?: string,
 ): string | null {
-  const written = stripSitePrefix(brief, rawReason?.trim() ?? "");
+  const written = stripProcessTalk(stripSitePrefix(brief, rawReason?.trim() ?? ""));
   if (!written) return null;
   if (written.toLowerCase() === listing.tagline.trim().toLowerCase()) return null;
   if (isCannedReason(written)) return null;
