@@ -1,11 +1,10 @@
-import { createSupabaseServer } from "@/lib/supabase";
-import { parseWhopPayment, verifyWhopSignature } from "@/lib/whop";
+import { parseWhopPayment, fulfillWhopPayment, verifyWhopSignature } from "@/lib/whop";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const secret = process.env.WHOP_WEBHOOK_SECRET;
-  const fulfillSecret = process.env.LISTING_FULFILL_SECRET;
+  const secret = process.env.WHOP_WEBHOOK_SECRET?.trim();
+  const fulfillSecret = process.env.LISTING_FULFILL_SECRET?.trim();
   if (!secret || !fulfillSecret) {
     return new Response("webhook not configured", { status: 500 });
   }
@@ -36,16 +35,13 @@ export async function POST(request: Request) {
     return new Response("unrecognized payment", { status: 400 });
   }
 
-  const supabase = createSupabaseServer();
-  const { error } = await supabase.rpc("fulfill_whop_payment", {
-    p_secret: fulfillSecret,
-    p_external_id: payment.id,
-    p_email: payment.email,
-    p_amount: payment.amount,
-  });
-
-  if (error) {
-    console.error("whop_fulfill_failed", error.message);
+  try {
+    await fulfillWhopPayment(payment);
+  } catch (error) {
+    console.error(
+      "whop_fulfill_failed",
+      error instanceof Error ? error.message : "unknown",
+    );
     return new Response("fulfill failed", { status: 500 });
   }
 

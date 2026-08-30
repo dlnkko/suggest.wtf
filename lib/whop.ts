@@ -1,5 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { amountFromWhopPlanId, parseListingAmount } from "./constants";
+import {
+  amountFromWhopPaidValue,
+  amountFromWhopPlanId,
+  isWhopPaymentId,
+} from "./constants";
+import { createSupabaseServer } from "./supabase";
 
 const TIMESTAMP_TOLERANCE_SEC = 300;
 
@@ -17,7 +22,8 @@ export function verifyWhopSignature(
   const id = headers.get("webhook-id");
   const timestamp = headers.get("webhook-timestamp");
   const signatureHeader = headers.get("webhook-signature");
-  if (!id || !timestamp || !signatureHeader || !secret) {
+  const key = secret.trim();
+  if (!id || !timestamp || !signatureHeader || !key) {
     return false;
   }
 
@@ -32,8 +38,8 @@ export function verifyWhopSignature(
     .map((part) => (part.includes(",") ? part.slice(part.indexOf(",") + 1) : part))
     .filter((value) => value.length > 0);
 
-  for (const key of hmacKeys(secret)) {
-    const expected = createHmac("sha256", key).update(signed).digest("base64");
+  for (const hmacKey of hmacKeys(key)) {
+    const expected = createHmac("sha256", hmacKey).update(signed).digest("base64");
     for (const signature of signatures) {
       if (safeEqual(expected, signature)) {
         return true;
@@ -55,15 +61,18 @@ export function parseWhopPayment(payload: unknown): WhopPayment | null {
     firstMatchingString(payload, (value) => value.startsWith("pay_"));
   if (!id) return null;
 
-  const planId = firstMatchingString(payload, (value) => /^plan_[A-Za-z0-9]+$/.test(value));
+  const plan = asRecord(data.plan);
+  const planId =
+    (typeof plan?.id === "string" ? plan.id : null) ??
+    firstMatchingString(payload, (value) => /^plan_[A-Za-z0-9]+$/.test(value));
   const amount =
     amountFromWhopPlanId(planId) ??
-    parseListingAmount(data.total) ??
-    parseListingAmount(data.usd_total) ??
-    parseListingAmount(data.amount) ??
-    amountFromCents(data.total) ??
-    amountFromCents(data.usd_total) ??
-    amountFromCents(data.amount);
+    amountFromWhopPaidValue(plan?.initial_price) ??
+    amountFromWhopPaidValue(data.total) ??
+    amountFromWhopPaidValue(data.usd_total) ??
+    amountFromWhopPaidValue(data.subtotal) ??
+    amountFromWhopPaidValue(data.amount) ??
+    amountFromWhopPaidValue(data.amount_after_fees);
 
   if (amount === null) return null;
 
@@ -72,6 +81,46 @@ export function parseWhopPayment(payload: unknown): WhopPayment | null {
     email: firstEmail(payload),
     amount,
   };
+}
+
+export async function fulfillWhopPayment(payment: WhopPayment): Promise<void> {
+  const fulfillSecret = process.env.LISTING_FULFILL_SECRET?.trim();
+  if (!fulfillSecret) {
+    throw new Error("fulfill not configured");
+  }
+
+  const supabase = createSupabaseServer();
+  const { error } = await supabase.rpc("fulfill_whop_payment", {
+    p_secret: fulfillSecret,
+    p_external_id: payment.id,
+    p_email: payment.email,
+    p_amount: payment.amount,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function retrieveWhopPayment(paymentId: string): Promise<unknown | null> {
+  const token = process.env.WHOP_API_KEY?.trim();
+  if (!token || !isWhopPaymentId(paymentId)) {
+    return null;
+  }
+
+  const response = await fetch(`https://api.whop.com/api/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+export function isSucceededWhopPayment(payload: unknown): boolean {
+  const envelope = asRecord(payload);
+  const data = asRecord(envelope?.data) ?? envelope;
+  const status = String(data?.status ?? envelope?.status ?? "").toLowerCase();
+  return status === "succeeded" || status === "paid" || status === "success";
 }
 
 function hmacKeys(secret: string): Buffer[] {
@@ -100,7 +149,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function firstPayId(value: unknown): string | null {
-  return typeof value === "string" && value.startsWith("pay_") ? value : null;
+  return isWhopPaymentId(value) ? value : null;
 }
 
 function firstEmail(value: unknown): string | null {
@@ -132,7 +181,3 @@ function firstMatchingString(
   return null;
 }
 
-function amountFromCents(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return parseListingAmount(value / 100);
-}

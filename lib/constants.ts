@@ -76,6 +76,28 @@ export function amountFromWhopPlanId(planId: string | null | undefined): number 
   return null;
 }
 
+export function amountFromWhopPaidValue(value: unknown): number | null {
+  const exact = parseListingAmount(value);
+  if (exact !== null) return exact;
+
+  const raw =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(raw)) return null;
+
+  for (const price of LISTING_PRICE_OPTIONS) {
+    const fee = price - raw;
+    if (fee >= 0 && fee <= Math.max(3, price * 0.12)) {
+      return price;
+    }
+  }
+
+  return parseListingAmount(raw / 100);
+}
+
+export function isWhopPaymentId(value: unknown): value is string {
+  return typeof value === "string" && /^pay_[A-Za-z0-9]{8,}$/.test(value);
+}
+
 export function clicksFromUsd(amount: number): number {
   if (!Number.isFinite(amount) || amount < MIN_LISTING_USD) return 0;
   return Math.floor(amount / CLICK_COST_USD);

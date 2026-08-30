@@ -13,6 +13,7 @@ const ERRORS: Record<string, string> = {
   failed: "We couldn’t start checkout. Try again.",
   amount: "Pick $20, $50, $100, $300, $500, or $1,000.",
   checkout: "Checkout isn’t ready. Try again in a moment.",
+  confirm: "Payment is confirmed on Whop, but credits didn’t land. Refresh once.",
 };
 
 export function ListingDashboard({

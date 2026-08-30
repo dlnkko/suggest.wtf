@@ -1,6 +1,11 @@
 import { GoogleSignIn } from "@/components/google-sign-in";
 import { ListingDashboard } from "@/components/listing-dashboard";
-import { getMyDashboard, getSignedInUserId } from "@/lib/listings";
+import { isWhopPaymentId } from "@/lib/constants";
+import {
+  claimReturnedWhopPayment,
+  getMyDashboard,
+  getSignedInUserId,
+} from "@/lib/listings";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +13,16 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    payment_id?: string;
+    receipt_id?: string;
+    checkout_status?: string;
+    status?: string;
+  }>;
 }) {
-  const { error } = await searchParams;
+  const params = await searchParams;
+  const { error, payment_id, receipt_id, checkout_status, status } = params;
   const userId = await getSignedInUserId();
 
   if (!userId) {
@@ -25,6 +37,19 @@ export default async function DashboardPage({
         </div>
       </main>
     );
+  }
+
+  const returnedId = [payment_id, receipt_id].find(isWhopPaymentId);
+  const checkoutSucceeded =
+    status === "success" || checkout_status === "success";
+
+  if (returnedId && checkoutSucceeded) {
+    try {
+      await claimReturnedWhopPayment(returnedId);
+    } catch {
+      redirect("/dashboard?error=confirm");
+    }
+    redirect("/dashboard");
   }
 
   const dashboard = await getMyDashboard();

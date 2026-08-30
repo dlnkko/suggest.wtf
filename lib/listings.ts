@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
-import { isListingKind, type ListingKind } from "./constants";
+import { isListingKind, isWhopPaymentId, type ListingKind } from "./constants";
 import { embedAndStoreListing } from "./embeddings";
 import { enrichListingProfile, parseListingProfile } from "./listing-profile";
 import { createSupabaseServer } from "./supabase";
 import { createClient } from "./supabase/server";
 import type { CatalogListing, ListingClick, ListingDashboard } from "./types";
+import {
+  fulfillWhopPayment,
+  isSucceededWhopPayment,
+  parseWhopPayment,
+  retrieveWhopPayment,
+} from "./whop";
 
 type RpcError = { message?: string } | null;
 
@@ -106,6 +112,36 @@ export async function publishListing(input: {
   }
 
   return { id };
+}
+
+export async function claimReturnedWhopPayment(paymentId: string): Promise<void> {
+  if (!isWhopPaymentId(paymentId)) return;
+
+  const dashboard = await getMyDashboard();
+  if (!dashboard) return;
+
+  if (
+    dashboard.listing.status === "active" &&
+    dashboard.listing.credit_balance_usd > 0 &&
+    dashboard.listing.pending_amount == null
+  ) {
+    return;
+  }
+
+  const retrieved = await retrieveWhopPayment(paymentId);
+  if (retrieved && !isSucceededWhopPayment(retrieved)) {
+    throw new Error("payment_not_succeeded");
+  }
+
+  const parsed = retrieved ? parseWhopPayment(retrieved) : null;
+  const amount = parsed?.amount ?? dashboard.listing.pending_amount;
+  if (amount == null) return;
+
+  await fulfillWhopPayment({
+    id: parsed?.id ?? paymentId,
+    email: parsed?.email ?? (await getSignedInEmail()),
+    amount,
+  });
 }
 
 export async function addListingCredits(amount: number): Promise<void> {
