@@ -18,19 +18,29 @@ function siteName(title: string): string {
   return title.split(/\s+[—–|:]\s+/)[0]?.trim() || title;
 }
 
-function cachedResult(url: string): SuggestResponse | null {
+function cachedResult(url: string, catalogCount: number): SuggestResponse | null {
   if (typeof window === "undefined") return null;
-  return readSuggestCache(url);
+  return readSuggestCache(url, catalogCount);
 }
 
-export function SuggestRun({ url }: { url: string }) {
-  const [result, setResult] = useState<SuggestResponse | null>(() => cachedResult(url));
-  const [loading, setLoading] = useState(() => !cachedResult(url));
+export function SuggestRun({
+  url,
+  catalogCount,
+}: {
+  url: string;
+  catalogCount: number;
+}) {
+  const [result, setResult] = useState<SuggestResponse | null>(() =>
+    cachedResult(url, catalogCount),
+  );
+  const [loading, setLoading] = useState(
+    () => !cachedResult(url, catalogCount),
+  );
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const existing = readSuggestCache(url);
+    const existing = readSuggestCache(url, catalogCount);
     if (existing) {
       setResult(existing);
       setError(null);
@@ -50,7 +60,7 @@ export function SuggestRun({ url }: { url: string }) {
 
     async function run() {
       try {
-        const payload = await suggestForUrl(url);
+        const payload = await suggestForUrl(url, catalogCount);
         if (!cancelled) setResult(payload);
       } catch (err) {
         if (!cancelled) {
@@ -67,11 +77,11 @@ export function SuggestRun({ url }: { url: string }) {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [url]);
+  }, [url, catalogCount]);
 
   useEffect(() => {
     function restore() {
-      const existing = readSuggestCache(url);
+      const existing = readSuggestCache(url, catalogCount);
       if (!existing) return;
       setResult(existing);
       setLoading(false);
@@ -88,7 +98,7 @@ export function SuggestRun({ url }: { url: string }) {
       window.removeEventListener("pageshow", restore);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [url]);
+  }, [url, catalogCount]);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col">

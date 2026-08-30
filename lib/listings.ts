@@ -47,6 +47,31 @@ export async function getCatalog(): Promise<CatalogListing[]> {
   }));
 }
 
+export function catalogRevisionOf(listings: Array<{ id: number }>): string {
+  if (listings.length === 0) return "0:0";
+  let maxId = 0;
+  for (const listing of listings) {
+    if (listing.id > maxId) maxId = listing.id;
+  }
+  return `${listings.length}:${maxId}`;
+}
+
+export function catalogCountOf(revision: string): number {
+  const n = Number(String(revision).split(":")[0]);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function getCatalogRevision(): Promise<string> {
+  const supabase = createSupabaseServer();
+  const { data, error } = await supabase.from("catalog").select("id");
+  if (error) {
+    throw new Error(error.message);
+  }
+  return catalogRevisionOf(
+    (data ?? []).map((row) => ({ id: Number(row.id) })),
+  );
+}
+
 export async function getSignedInUserId(): Promise<string | null> {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||

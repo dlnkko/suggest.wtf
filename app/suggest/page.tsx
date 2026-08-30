@@ -1,5 +1,9 @@
 import { SuggestRun } from "@/components/suggest-run";
-import { getSignedInUserId } from "@/lib/listings";
+import {
+  catalogCountOf,
+  getCatalogRevision,
+  getSignedInUserId,
+} from "@/lib/listings";
 import { normalizeUrl } from "@/lib/url";
 import { redirect } from "next/navigation";
 
@@ -21,9 +25,16 @@ export default async function SuggestPage({
     redirect(`/continue?url=${encodeURIComponent(url)}`);
   }
 
+  let catalogCount = 0;
+  try {
+    catalogCount = catalogCountOf(await getCatalogRevision());
+  } catch (error) {
+    console.error("catalog_revision_failed", error);
+  }
+
   return (
     <main className="flex flex-1 flex-col px-6 pb-28 pt-16 sm:px-10 sm:pt-20">
-      <SuggestRun url={url} />
+      <SuggestRun url={url} catalogCount={catalogCount} />
     </main>
   );
 }

@@ -6,6 +6,7 @@ export const LISTING_PRICE_USD = MIN_LISTING_USD;
 export const CLICK_COST_USD = 0.5;
 export const CLICKS_PER_LISTING = LISTING_PRICE_USD / CLICK_COST_USD;
 export const MARKDOWN_CHAR_LIMIT = 8000;
+export const CATALOG_REFRESH_EVERY = 20;
 export const BRIEF_CHAR_LIMIT = 3200;
 export const MATCH_LIMIT = 3;
 export const CANDIDATE_LIMIT = 12;

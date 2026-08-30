@@ -38,6 +38,8 @@ export type SuggestResponse = {
   url: string;
   site: SiteBrief;
   matches: SuggestionMatch[];
+  catalog_revision: string;
+  catalog_count: number;
 };
 
 export type ListingDashboard = {

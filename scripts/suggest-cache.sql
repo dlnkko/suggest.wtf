@@ -1,0 +1,3 @@
+-- Applied to tpoqiojudhktlucnbecm as suggest_cache_reuse_scrape.
+-- Stores one scrape + match set per visitor URL.
+-- Refresh scrape every 20 new live listings; keep existing matches if they still fit.
