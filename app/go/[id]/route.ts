@@ -1,4 +1,5 @@
 import { consumeClick, getSignedInEmail, hashVisitor } from "@/lib/listings";
+import { withOutboundUtm } from "@/lib/url";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -29,7 +30,7 @@ export async function GET(
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    return NextResponse.redirect(result.url, 302);
+    return NextResponse.redirect(withOutboundUtm(result.url), 302);
   } catch (error) {
     console.error(error);
     return NextResponse.redirect(new URL("/", request.url));

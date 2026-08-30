@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { isListingKind, type ListingKind } from "./constants";
 import { embedAndStoreListing } from "./embeddings";
+import { enrichListingProfile, parseListingProfile } from "./listing-profile";
 import { createSupabaseServer } from "./supabase";
 import { createClient } from "./supabase/server";
 import type { CatalogListing, ListingClick, ListingDashboard } from "./types";
@@ -15,7 +16,7 @@ export async function getCatalog(): Promise<CatalogListing[]> {
   const supabase = createSupabaseServer();
   const { data, error } = await supabase
     .from("catalog")
-    .select("id, name, kind, url, tagline, description")
+    .select("id, name, kind, url, tagline, description, profile")
     .order("id", { ascending: true });
 
   if (error) {
@@ -29,6 +30,7 @@ export async function getCatalog(): Promise<CatalogListing[]> {
     url: String(row.url),
     tagline: String(row.tagline),
     description: String(row.description),
+    profile: parseListingProfile(row.profile),
   }));
 }
 
@@ -74,18 +76,33 @@ export async function publishListing(input: {
   }
 
   try {
-    await embedAndStoreListing(
+    await enrichListingProfile(
       {
         id,
         name: input.name,
         kind: input.kind,
+        url: input.url,
         tagline: input.tagline,
         description: input.description,
       },
       true,
     );
   } catch (error) {
-    console.error("listing_embed_failed", error);
+    console.error("listing_profile_failed", error);
+    try {
+      await embedAndStoreListing(
+        {
+          id,
+          name: input.name,
+          kind: input.kind,
+          tagline: input.tagline,
+          description: input.description,
+        },
+        true,
+      );
+    } catch (embedError) {
+      console.error("listing_embed_failed", embedError);
+    }
   }
 
   return { id };

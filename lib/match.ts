@@ -49,6 +49,7 @@ Rules:
 - Do not recommend a launcher, email client, or adjacent consumer app unless the page itself is about that job.
 - Do not recommend clones of the visitor's product.
 - Cover distinct needs. Do not pick two CRMs or two analytics tools.
+- Use each candidate's sells, serves, helps_with, proof, and avoid. Do not pick a listing if avoid matches this URL.
 - reason: 2 sentences, as if you noticed something on their startup, landing page, product, agency site, or company URL. Mention a concrete detail (offer, CTA, audience, missing pricing, missing login). Then say how this listing fills that hole. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
 
 const REASON_SYSTEM = `You write why a catalog listing is necessary for this URL.
@@ -242,14 +243,7 @@ async function pickMatches(
 ): Promise<SuggestionMatch[]> {
   if (candidates.length === 0) return [];
 
-  const compact = candidates.map((listing) => ({
-    id: listing.id,
-    name: listing.name,
-    kind: listing.kind,
-    tagline: listing.tagline,
-    description: listing.description.slice(0, 260),
-    explore_rank: listing.explore_rank,
-  }));
+  const compact = candidates.map((listing) => candidateForPrompt(listing));
 
   const raw = await lunaJson(
     PICK_SYSTEM,
@@ -319,15 +313,7 @@ async function reasonMatches(
       excerpt.slice(0, 2400),
       "",
       "Candidates:",
-      JSON.stringify(
-        pool.map((listing) => ({
-          id: listing.id,
-          name: listing.name,
-          kind: listing.kind,
-          tagline: listing.tagline,
-          description: listing.description.slice(0, 220),
-        })),
-      ),
+      JSON.stringify(pool.map((listing) => candidateForPrompt(listing))),
     ]
       .filter(Boolean)
       .join("\n"),
@@ -454,6 +440,23 @@ function isCannedReason(value: string): boolean {
   return /complementary fit for|keep shipping their core product|growth gap their landing page|worth a look if they want a partner already doing this/i.test(
     value,
   );
+}
+
+function candidateForPrompt(
+  listing: CatalogListing & { explore_rank?: number },
+): Record<string, unknown> {
+  const profile = listing.profile;
+  return {
+    id: listing.id,
+    name: listing.name,
+    kind: listing.kind,
+    tagline: listing.tagline,
+    sells: profile?.sells || listing.description.slice(0, 220),
+    serves: profile?.serves || "",
+    helps_with: profile?.helps_with ?? [],
+    proof: profile?.proof ?? [],
+    avoid: profile?.avoid ?? [],
+  };
 }
 
 function isStaffingListing(listing: CatalogListing): boolean {

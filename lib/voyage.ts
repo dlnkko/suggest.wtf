@@ -65,3 +65,38 @@ export function listingEmbedText(input: {
     .filter(Boolean)
     .join(" ");
 }
+
+export function offerEmbedText(input: {
+  name: string;
+  kind: string;
+  tagline: string;
+  description: string;
+  profile: { sells: string; serves: string };
+}): string {
+  return [
+    `${input.kind.replaceAll("_", " ")} listing.`,
+    input.name,
+    input.profile.sells,
+    input.profile.serves,
+    input.tagline,
+    input.description,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function helpsEmbedText(input: {
+  name: string;
+  kind: string;
+  tagline: string;
+  profile: { serves: string; helps_with: string[]; proof: string[] };
+}): string {
+  return [
+    `${input.name} helps other companies with ${input.profile.helps_with.join(", ")}.`,
+    input.profile.serves ? `Best for ${input.profile.serves}.` : "",
+    input.tagline,
+    ...input.profile.proof.slice(0, 3),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}

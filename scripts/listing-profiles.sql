@@ -1,0 +1,3 @@
+-- Applied to tpoqiojudhktlucnbecm as listing_profiles_and_helps_embeddings.
+-- Adds scrape + structured profile and offer/helps embeddings.
+-- Retrieval uses coalesce(helps_embedding, embedding).

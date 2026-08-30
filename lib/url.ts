@@ -51,3 +51,15 @@ export function displayHost(url: string): string {
 export function faviconUrl(pageUrl: string): string {
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(displayHost(pageUrl))}&sz=64`;
 }
+
+export function withOutboundUtm(raw: string): string {
+  try {
+    const url = new URL(raw);
+    url.searchParams.set("utm_source", "suggest.wtf");
+    url.searchParams.set("utm_medium", "referral");
+    url.searchParams.set("utm_campaign", "listing");
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}

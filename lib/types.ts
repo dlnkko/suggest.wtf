@@ -1,5 +1,13 @@
 import type { ListingKind } from "./constants";
 
+export type ListingProfile = {
+  sells: string;
+  serves: string;
+  helps_with: string[];
+  proof: string[];
+  avoid: string[];
+};
+
 export type CatalogListing = {
   id: number;
   name: string;
@@ -7,6 +15,7 @@ export type CatalogListing = {
   url: string;
   tagline: string;
   description: string;
+  profile: ListingProfile | null;
 };
 
 export type SiteBrief = {
