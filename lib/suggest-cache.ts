@@ -5,7 +5,7 @@ const memory = new Map<string, SuggestResponse>();
 const inflight = new Map<string, Promise<SuggestResponse>>();
 
 function storageKey(url: string): string {
-  return `suggest:v1:${url}`;
+  return `suggest:v2:${url}`;
 }
 
 export function readSuggestCache(url: string): SuggestResponse | null {

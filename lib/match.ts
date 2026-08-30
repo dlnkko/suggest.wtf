@@ -16,51 +16,60 @@ import { embedTexts } from "./voyage";
 type BriefPayload = {
   title?: string;
   what_it_is?: string;
+  ignore?: string[];
   needs?: string[];
   search_queries?: string[];
   facts?: string[];
+};
+
+type CoreBrief = SiteBrief & {
+  search_queries: string[];
+  ignore: string[];
+  openaiFailed?: boolean;
 };
 
 type PickPayload = {
   matches?: Array<{ id: number; reason: string }>;
 };
 
-const BRIEF_SYSTEM = `You read a landing page and find growth openings this business does not cover yet.
+const BRIEF_SYSTEM = `You read a landing page and lock onto the CORE product first. Then you find gaps for that product, not for anything in the demo gallery.
 
 Return JSON only:
-{"title":"","what_it_is":"","needs":[""],"search_queries":[""],"facts":[""]}
+{"title":"","what_it_is":"","ignore":[""],"needs":[""],"search_queries":[""],"facts":[""]}
 
 Rules:
-- title: the product or person name.
-- what_it_is: one or two concrete sentences about what they sell and to whom.
-- facts: 3 to 5 observations from the excerpt (audience, motion, CTA, pricing, what the page is thin on). Do not invent.
-- needs: 3 to 5 GROWTH OPENINGS, not job titles. Examples: creator payouts, brand-deal CRM, owned audience, trust/reviews, analytics on take-rate, scheduling. Never write "you need a designer" unless the page is clearly unusable.
-- search_queries: 3 to 5 queries for complementary STARTUPS, apps, or agencies already in a catalog (payments, CRM, analytics, email, auth, legal, hosting). Do not search for freelance designers or copywriters.
+- title: the product or person name on this URL.
+- what_it_is: one or two sentences about what THIS company sells and who pays them. If the page is a builder, agent, API, or platform, say that. Do not describe a plumber, gym, wedding, or other sample vertical as the business.
+- ignore: example businesses, generated sample sites, testimonials' industries, and gallery cards that are outputs of the product, not the product.
+- facts: 3 to 5 observations about the CORE product (who it is for, motion, CTA, pricing, what the platform itself is thin on). Do not invent. Do not treat demo verticals as facts about the company.
+- needs: 3 to 5 GROWTH OPENINGS for the CORE product. For a prompt-to-software or site builder, think auth, usage billing, observability, LLM infra, git/deploy, team seats, domains — not booking or RSVP for a plumber demo. Never write job titles.
+- search_queries: 3 to 5 queries for complementary tools the CORE product still lacks. Query the category of this company (AI builder, scraping API, CRM, etc.), never the demo industries.
 - Prefer complementary companies over clones. English. No fluff.`;
 
-const PICK_SYSTEM = `You pick catalog listings that this URL actually needs, using only what is visible on their landing page.
+const PICK_SYSTEM = `You pick catalog listings that help the CORE product on this URL grow. Ignore demo galleries.
 
 Return JSON only:
 {"matches":[{"id":1,"reason":""}]}
 
 Rules:
+- The visitor is the company that owns this URL. Example sites they generate (plumber, gym, wedding, club) are not the customer you are helping.
+- Only recommend a listing if it fills a gap for the CORE product. A scheduling or RSVP tool is wrong for a builder platform unless the platform itself sells appointments.
 - Only use IDs from the candidate list. Never invent IDs.
-- Return between 1 and ${MATCH_LIMIT} matches. Never return 0 if any candidate fills a real gap on the page. Prefer 3 distinct openings when their site supports them. Do not pad with weak picks just to hit 3.
-- Do not recommend a launcher, email client, or adjacent consumer app unless the page itself is about that job.
+- Return between 1 and ${MATCH_LIMIT} matches. Never return 0 if any candidate fills a real gap for the core product. Prefer 3 distinct openings when the core supports them. Do not pad.
 - Do not recommend clones of the visitor's product.
 - Cover distinct needs. Do not pick two CRMs or two analytics tools.
 - Use each candidate's sells, serves, helps_with, proof, and avoid. Do not pick a listing if avoid matches this URL.
-- reason: 2 sentences, as if you noticed something on their startup, landing page, product, agency site, or company URL. Mention a concrete detail (offer, CTA, audience, missing pricing, missing login). Then say how this listing fills that hole. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
+- reason: 2 sentences about the CORE product. Mention a concrete detail of what they sell. Then say how this listing fills that hole. Never argue from a demo vertical. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
 
-const REASON_SYSTEM = `You write why a catalog listing is necessary for this URL.
+const REASON_SYSTEM = `You write why a catalog listing is necessary for the CORE product on this URL.
 
 Return JSON only:
 {"matches":[{"id":1,"reason":"","keep":true}]}
 
 Rules:
-- keep=true only if their landing page shows this listing is actually needed now.
-- reason: 2 personalized sentences about what you noticed on their site. No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction.
-- If it is a nice-to-have, set keep=false and reason="".`;
+- keep=true only if the listing helps the CORE product now, not a demo customer on the page.
+- reason: 2 personalized sentences about the core product. No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction. Never justify the pick with a plumber, wedding, or other sample vertical.
+- If it is a nice-to-have or only useful to a demo site they generated, set keep=false and reason="".`;
 
 export async function matchListings(input: {
   url: string;
@@ -84,7 +93,7 @@ export async function matchListings(input: {
     excerpt,
   });
 
-  const candidates = await retrieveCandidates(brief, pool, visitorHost, excerpt);
+  const candidates = await retrieveCandidates(brief, pool, visitorHost);
 
   const site: SiteBrief = {
     title: brief.title,
@@ -117,13 +126,14 @@ async function extractBrief(input: {
   url: string;
   title: string | null;
   excerpt: string;
-}): Promise<SiteBrief & { search_queries: string[]; openaiFailed?: boolean }> {
-  const fallback: SiteBrief & { search_queries: string[]; openaiFailed?: boolean } = {
-    title: input.title?.trim() || input.url,
-    what_it_is: firstScrapeLine(input.excerpt),
+}): Promise<CoreBrief> {
+  const fallback: CoreBrief = {
+    title: input.title?.trim() || displayHost(input.url),
+    what_it_is: input.title?.trim() || displayHost(input.url),
     needs: [],
     facts: [],
     search_queries: [],
+    ignore: [],
   };
 
   try {
@@ -133,6 +143,8 @@ async function extractBrief(input: {
         `Visitor URL: ${input.url}`,
         input.title ? `Detected title: ${input.title}` : "",
         "",
+        "Name the company on this URL first. Demo cards, example industries, and generated sample sites are not the business.",
+        "",
         "Landing excerpt:",
         input.excerpt,
       ]
@@ -140,14 +152,17 @@ async function extractBrief(input: {
         .join("\n"),
     );
     const parsed = parseJsonObject<BriefPayload>(raw);
-    const needs = cleanList(parsed.needs, 5).filter((item) => !isJobTitle(item));
-    const facts = cleanList(parsed.facts, 5);
+    const needs = cleanList(parsed.needs, 5).filter(
+      (item) => !isJobTitle(item) && !isDemoVerticalTalk(item),
+    );
+    const facts = cleanList(parsed.facts, 5).filter((item) => !isDemoVerticalTalk(item));
     const search_queries = cleanList(parsed.search_queries, 5).filter(
-      (item) => !isJobTitle(item),
+      (item) => !isJobTitle(item) && !isDemoVerticalTalk(item),
     );
     return {
       title: parsed.title?.trim() || fallback.title,
-      what_it_is: parsed.what_it_is?.trim() || "",
+      what_it_is: parsed.what_it_is?.trim() || fallback.what_it_is,
+      ignore: cleanList(parsed.ignore, 6),
       needs,
       facts,
       search_queries,
@@ -159,10 +174,9 @@ async function extractBrief(input: {
 }
 
 async function retrieveCandidates(
-  brief: SiteBrief & { search_queries: string[] },
+  brief: CoreBrief,
   pool: CatalogListing[],
   visitorHost: string,
-  excerpt: string,
 ): Promise<Array<CatalogListing & { similarity: number; explore_rank: number }>> {
   if (pool.length === 0) return [];
 
@@ -179,7 +193,7 @@ async function retrieveCandidates(
   }
 
   try {
-    const queries = catalogQueries(brief, excerpt);
+    const queries = catalogQueries(brief);
     const vectors = await embedTexts(queries, "query");
     const hits = (
       await Promise.all(
@@ -238,7 +252,7 @@ async function retrieveCandidates(
 }
 
 async function pickMatches(
-  brief: SiteBrief,
+  brief: CoreBrief,
   candidates: Array<CatalogListing & { similarity: number; explore_rank: number }>,
   excerpt: string,
 ): Promise<SuggestionMatch[]> {
@@ -249,13 +263,10 @@ async function pickMatches(
   const raw = await lunaJson(
     PICK_SYSTEM,
     [
-      `Site: ${brief.title}`,
-      brief.what_it_is ? `What it is: ${brief.what_it_is}` : "",
-      brief.facts.length ? `Facts from their page: ${brief.facts.join("; ")}` : "",
-      brief.needs.length ? `Growth openings: ${brief.needs.join("; ")}` : "",
+      ...coreContext(brief),
       "",
-      "Their landing page:",
-      excerpt.slice(0, 2400),
+      "Landing page (use only to confirm the core product):",
+      excerpt.slice(0, 2000),
       "",
       "Candidates (only these IDs):",
       JSON.stringify(compact),
@@ -293,7 +304,7 @@ async function pickMatches(
 }
 
 async function reasonMatches(
-  brief: SiteBrief,
+  brief: CoreBrief,
   candidates: Array<CatalogListing & { similarity: number; explore_rank: number }>,
   excerpt: string,
 ): Promise<SuggestionMatch[]> {
@@ -305,13 +316,10 @@ async function reasonMatches(
   const raw = await lunaJson(
     REASON_SYSTEM,
     [
-      `Site: ${brief.title}`,
-      brief.what_it_is ? `What it is: ${brief.what_it_is}` : "",
-      brief.facts.length ? `Facts from their page: ${brief.facts.join("; ")}` : "",
-      brief.needs.length ? `Openings: ${brief.needs.join("; ")}` : "",
+      ...coreContext(brief),
       "",
-      "Their landing page:",
-      excerpt.slice(0, 2400),
+      "Landing page (use only to confirm the core product):",
+      excerpt.slice(0, 2000),
       "",
       "Candidates:",
       JSON.stringify(pool.map((listing) => candidateForPrompt(listing))),
@@ -345,11 +353,11 @@ async function reasonMatches(
 }
 
 function fallbackFromScrape(
-  brief: SiteBrief,
+  brief: CoreBrief,
   excerpt: string,
   candidates: Array<CatalogListing & { similarity: number; explore_rank: number }>,
 ): SuggestionMatch[] {
-  const observed = firstScrapeLine(excerpt) || brief.what_it_is || brief.title;
+  const observed = brief.what_it_is || firstScrapeLine(excerpt) || brief.title;
   const preferred = candidates.filter((listing) => !isStaffingListing(listing));
   const pool = preferred.length > 0 ? preferred : candidates;
 
@@ -393,6 +401,7 @@ function cleanReason(
   if (!written) return null;
   if (written.toLowerCase() === listing.tagline.trim().toLowerCase()) return null;
   if (isCannedReason(written)) return null;
+  if (isDemoVerticalTalk(written)) return null;
   return written;
 }
 
@@ -413,26 +422,39 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function catalogQueries(
-  brief: SiteBrief & { search_queries: string[] },
-  excerpt: string,
-): string[] {
+function catalogQueries(brief: CoreBrief): string[] {
   const subject = brief.what_it_is || brief.title;
   const fromModel = brief.search_queries.filter((query) => !isJobTitle(query));
   const fromNeeds = brief.needs
     .filter((need) => !isJobTitle(need))
     .map((need) => `${subject} needs ${need}`);
-  const grounded = excerpt.trim() ? excerpt.slice(0, 420) : "";
   return uniqueStrings([
     ...fromModel,
     ...fromNeeds,
-    grounded,
+    subject,
     subject ? `${subject} complementary infrastructure they still lack` : "",
   ]).slice(0, 5);
 }
 
+function coreContext(brief: CoreBrief): string[] {
+  return [
+    `Core product: ${brief.what_it_is || brief.title}`,
+    brief.facts.length ? `Core facts: ${brief.facts.join("; ")}` : "",
+    brief.needs.length ? `Gaps for the core product: ${brief.needs.join("; ")}` : "",
+    brief.ignore?.length
+      ? `Ignore these demos / sample verticals: ${brief.ignore.join("; ")}`
+      : "Ignore demo galleries, example industries, and generated sample sites.",
+  ].filter(Boolean);
+}
+
 function isJobTitle(value: string): boolean {
   return /freelance|copywriter|product designer|hire a|need a designer|need a developer|mvp and apis/i.test(
+    value,
+  );
+}
+
+function isDemoVerticalTalk(value: string): boolean {
+  return /\b(plumber|plumbing|gym|car detail|wedding|rsvp|indie club|membership club)\b/i.test(
     value,
   );
 }
