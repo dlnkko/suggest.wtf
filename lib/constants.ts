@@ -40,7 +40,7 @@ const CHECKOUT_BY_AMOUNT: Record<ListingPriceOption, string> = {
   20: "https://whop.com/checkout/plan_qPDRCdOk5RxhS",
   50: "https://whop.com/checkout/plan_V5WafiBtSboat",
   100: "https://whop.com/checkout/plan_ocp5Xf6DRw1dY",
-  300: "",
+  300: "https://whop.com/checkout/plan_cxQZ4J92GlTme",
   500: "https://whop.com/checkout/plan_GmUJWtYMShr73",
   1000: "https://whop.com/checkout/plan_10NB6pJb9cDhO",
 };
