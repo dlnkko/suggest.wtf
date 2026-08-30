@@ -10,33 +10,45 @@ import { useState } from "react";
 import { signOut, topUpCredits } from "@/app/list/actions";
 
 const ERRORS: Record<string, string> = {
-  failed: "We couldn’t add those credits. Try again.",
+  failed: "We couldn’t start checkout. Try again.",
   amount: "Pick $20, $50, $100, $300, $500, or $1,000.",
+  checkout: "Checkout isn’t ready. Try again in a moment.",
 };
 
 export function ListingDashboard({
   listing,
   clicks,
-  notice,
   errorCode,
 }: {
   listing: ListingDashboard;
   clicks: ListingClick[];
-  notice?: "paid" | "topup";
   errorCode?: string;
 }) {
   const error = errorCode ? ERRORS[errorCode] : null;
   const sameCopy = listing.tagline.trim() === listing.description.trim();
+  const isLive = listing.status === "active" && listing.credit_balance_usd > 0;
 
   return (
     <div>
-      {notice === "paid" ? <ListedNotice compact /> : null}
-      {notice === "topup" ? (
-        <p className="rise text-sm text-[var(--muted)]">Credits added.</p>
-      ) : null}
+      {isLive ? (
+        <ListedNotice compact />
+      ) : (
+        <div className="listed-notice rise">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+            Awaiting payment
+          </p>
+          <p className="display mt-2 text-3xl tracking-tight">
+            Finish payment to go live.
+          </p>
+          <p className="mt-4 max-w-md text-[15px] leading-7 text-[var(--muted)]">
+            Your listing is saved. Credits appear only after Whop confirms the
+            charge. Going back from checkout does not add credits.
+          </p>
+        </div>
+      )}
 
-      <div className="rise" style={notice ? { animationDelay: "80ms" } : undefined}>
-        <div className={`${notice ? "mt-5" : "mt-1"} flex items-center gap-3.5`}>
+      <div className="rise" style={{ animationDelay: "80ms" }}>
+        <div className={`${isLive ? "mt-5" : "mt-8"} flex items-center gap-3.5`}>
           <img
             src={faviconUrl(listing.url)}
             alt=""
@@ -66,11 +78,20 @@ export function ListingDashboard({
 
       <p className="rise mt-6 text-sm text-[var(--muted)]" style={{ animationDelay: "240ms" }}>
         Status: {statusLabel(listing.status)}. Click counts are a maximum.
+        {isLive
+          ? null
+          : " If you just paid, refresh in a few seconds."}
       </p>
 
       <section className="rise mt-12" style={{ animationDelay: "280ms" }}>
-        <h2 className="text-sm font-medium tracking-tight">Add credits</h2>
-        <CreditsForm error={error} />
+        <h2 className="text-sm font-medium tracking-tight">
+          {isLive ? "Add credits" : "Pay to go live"}
+        </h2>
+        <CreditsForm
+          error={error}
+          initialAmount={listing.pending_amount ?? MIN_LISTING_USD}
+          payLabel={isLive ? "Add" : "Pay"}
+        />
       </section>
 
       <section className="rise mt-14" style={{ animationDelay: "320ms" }}>
@@ -110,8 +131,16 @@ export function ListingDashboard({
   );
 }
 
-function CreditsForm({ error }: { error: string | null }) {
-  const [amount, setAmount] = useState(MIN_LISTING_USD);
+function CreditsForm({
+  error,
+  initialAmount,
+  payLabel,
+}: {
+  error: string | null;
+  initialAmount: number;
+  payLabel: "Add" | "Pay";
+}) {
+  const [amount, setAmount] = useState(initialAmount);
   const clicks = clicksFromUsd(amount);
 
   return (
@@ -129,7 +158,7 @@ function CreditsForm({ error }: { error: string | null }) {
         clicks.
       </p>
       <Button type="submit" className="w-full rounded-2xl px-5 py-4 text-sm sm:w-auto">
-        Add ${amount.toLocaleString("en")}
+        {payLabel} ${amount.toLocaleString("en")}
       </Button>
     </form>
   );

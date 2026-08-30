@@ -45,21 +45,35 @@ const CHECKOUT_BY_AMOUNT: Record<ListingPriceOption, string> = {
   1000: "https://whop.com/checkout/plan_10NB6pJb9cDhO",
 };
 
-export function checkoutUrlForAmount(amount: number): string | null {
-  const fromEnv: Record<ListingPriceOption, string | undefined> = {
-    20: process.env.NEXT_PUBLIC_CHECKOUT_20,
-    50: process.env.NEXT_PUBLIC_CHECKOUT_50,
-    100: process.env.NEXT_PUBLIC_CHECKOUT_100,
-    300: process.env.NEXT_PUBLIC_CHECKOUT_300,
-    500: process.env.NEXT_PUBLIC_CHECKOUT_500,
-    1000: process.env.NEXT_PUBLIC_CHECKOUT_1000,
+function checkoutUrlsByAmount(): Record<ListingPriceOption, string | undefined> {
+  return {
+    20: process.env.NEXT_PUBLIC_CHECKOUT_20 || CHECKOUT_BY_AMOUNT[20],
+    50: process.env.NEXT_PUBLIC_CHECKOUT_50 || CHECKOUT_BY_AMOUNT[50],
+    100: process.env.NEXT_PUBLIC_CHECKOUT_100 || CHECKOUT_BY_AMOUNT[100],
+    300: process.env.NEXT_PUBLIC_CHECKOUT_300 || CHECKOUT_BY_AMOUNT[300],
+    500: process.env.NEXT_PUBLIC_CHECKOUT_500 || CHECKOUT_BY_AMOUNT[500],
+    1000: process.env.NEXT_PUBLIC_CHECKOUT_1000 || CHECKOUT_BY_AMOUNT[1000],
   };
+}
+
+export function checkoutUrlForAmount(amount: number): string | null {
+  const fromEnv = checkoutUrlsByAmount();
   const exact = (LISTING_PRICE_OPTIONS as readonly number[]).includes(amount)
-    ? fromEnv[amount as ListingPriceOption] || CHECKOUT_BY_AMOUNT[amount as ListingPriceOption]
+    ? fromEnv[amount as ListingPriceOption]
     : undefined;
   const fallback = process.env.NEXT_PUBLIC_CHECKOUT_URL;
   const url = exact || fallback;
   return url && url.length > 0 ? url : null;
+}
+
+export function amountFromWhopPlanId(planId: string | null | undefined): number | null {
+  if (!planId) return null;
+  for (const [amount, url] of Object.entries(checkoutUrlsByAmount())) {
+    if (url && url.includes(planId)) {
+      return Number(amount);
+    }
+  }
+  return null;
 }
 
 export function clicksFromUsd(amount: number): number {

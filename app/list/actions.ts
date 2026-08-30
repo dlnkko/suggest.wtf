@@ -6,7 +6,6 @@ import {
   parseListingAmount,
   type ListingKind,
 } from "@/lib/constants";
-import { markCheckoutReturn } from "@/lib/checkout-return";
 import { addListingCredits, getSignedInUserId, publishListing } from "@/lib/listings";
 import { createClient } from "@/lib/supabase/server";
 import { displayHost, normalizeUrl } from "@/lib/url";
@@ -58,13 +57,7 @@ export async function createListing(formData: FormData) {
     redirect("/list?error=failed");
   }
 
-  await markCheckoutReturn("paid");
-  const checkout = checkoutUrlForAmount(amount);
-  if (checkout) {
-    redirect(checkout);
-  }
-
-  redirect("/dashboard");
+  redirectToCheckout(amount);
 }
 
 export async function topUpCredits(formData: FormData) {
@@ -78,23 +71,25 @@ export async function topUpCredits(formData: FormData) {
     redirect("/dashboard?error=amount");
   }
 
-  await markCheckoutReturn("topup");
-  const checkout = checkoutUrlForAmount(amount);
-  if (checkout) {
-    redirect(checkout);
-  }
-
   try {
     await addListingCredits(amount);
   } catch {
     redirect("/dashboard?error=failed");
   }
 
-  redirect("/dashboard");
+  redirectToCheckout(amount);
 }
 
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+function redirectToCheckout(amount: number): never {
+  const checkout = checkoutUrlForAmount(amount);
+  if (!checkout) {
+    redirect("/dashboard?error=checkout");
+  }
+  redirect(checkout);
 }

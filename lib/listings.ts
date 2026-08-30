@@ -143,6 +143,10 @@ export async function getMyDashboard(): Promise<{
       ...payload.listing,
       kind: asKind(payload.listing.kind),
       credit_balance_usd: Number(payload.listing.credit_balance_usd),
+      pending_amount:
+        payload.listing.pending_amount == null
+          ? null
+          : Number(payload.listing.pending_amount),
       clicks_remaining: Number(payload.listing.clicks_remaining),
       clicks_charged: Number(payload.listing.clicks_charged ?? 0),
       clicks_total: Number(payload.listing.clicks_total ?? 0),

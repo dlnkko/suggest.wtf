@@ -48,6 +48,7 @@ export type ListingDashboard = {
   tagline: string;
   description: string;
   credit_balance_usd: number;
+  pending_amount: number | null;
   status: "pending" | "active" | "paused" | "depleted";
   clicks_remaining: number;
   clicks_charged: number;
