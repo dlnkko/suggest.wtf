@@ -16,8 +16,7 @@ export function ListedNotice({ compact = false }: { compact?: boolean }) {
         You’re live.
       </Title>
       <p className="mt-4 max-w-md text-[15px] leading-7 text-[var(--muted)]">
-        Your software is now listed. When someone pastes a URL, you can show up
-        for them.
+        You’re listed. When someone pastes a URL, you can show up for them.
       </p>
     </div>
   );

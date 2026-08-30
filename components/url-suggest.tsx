@@ -32,7 +32,7 @@ export function UrlSuggest({ signedIn }: { signedIn: boolean }) {
             autoComplete="url"
             spellCheck={false}
             required
-            placeholder="https://your-startup.com"
+            placeholder="https://your-site.com"
             value={value}
             onChange={(event) => setValue(event.target.value)}
             className="min-w-0 flex-1 bg-transparent px-4 py-3 font-mono text-[15px] tracking-tight text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
