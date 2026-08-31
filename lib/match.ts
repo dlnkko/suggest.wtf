@@ -42,8 +42,8 @@ Rules:
 - what_it_is: one or two sentences about what THIS company sells and who pays them. If the page is a builder, agent, API, or platform, say that. Do not describe a plumber, gym, wedding, or other sample vertical as the business.
 - ignore: example businesses, generated sample sites, testimonials' industries, and gallery cards that are outputs of the product, not the product.
 - facts: 3 to 5 observations about the CORE product (who it is for, motion, CTA, pricing, what the platform itself is thin on). Do not invent. Do not treat demo verticals as facts about the company.
-- needs: 3 to 5 GROWTH OPENINGS for the CORE product. For a prompt-to-software or site builder, think auth, usage billing, observability, LLM infra, git/deploy, team seats, domains — not booking or RSVP for a plumber demo. Never write job titles.
-- search_queries: 3 to 5 queries for complementary tools the CORE product still lacks. Query the category of this company (AI builder, scraping API, CRM, etc.), never the demo industries.
+- needs: 3 to 5 GROWTH OPENINGS for the CORE product. Only add a people-shaped need if the page clearly shows they are thin on that craft (video, copy, design, audience, distribution). Treat content creators and freelancers as equal options. Do not invent a person need. For a builder or platform, think auth, usage billing, observability, LLM infra, git/deploy — not booking or RSVP for a plumber demo.
+- search_queries: 3 to 5 queries for complementary tools the CORE product still lacks. Only add a freelancer or content-creator query if that craft or audience gap is visible on the page. Never the demo industries.
 - Prefer complementary companies over clones. English. No fluff.`;
 
 const PICK_SYSTEM = `You pick catalog listings that help the CORE product on this URL grow. Ignore demo galleries.
@@ -54,6 +54,7 @@ Return JSON only:
 Rules:
 - The visitor is the company that owns this URL. Example sites they generate (plumber, gym, wedding, club) are not the customer you are helping.
 - Only recommend a listing if it fills a gap for the CORE product. A scheduling or RSVP tool is wrong for a builder platform unless the platform itself sells appointments.
+- Freelancers and content creators are equal. Pick one only if the page shows they actually need that craft or audience now (copy, design, video, distribution). Do not add a person to fill a slot. If the gaps are product or infra, pick tools. Never recommend a person to another freelancer or creator.
 - Only use IDs from the candidate list. Never invent IDs.
 - Return between 1 and ${MATCH_LIMIT} matches. Never return 0 if any candidate fills a real gap for the core product. Prefer 3 distinct openings when the core supports them. Do not pad.
 - Do not recommend clones of the visitor's product.
@@ -67,7 +68,7 @@ Return JSON only:
 {"matches":[{"id":1,"reason":"","keep":true}]}
 
 Rules:
-- keep=true only if the listing helps the CORE product now, not a demo customer on the page.
+- keep=true only if the listing helps the CORE product now, not a demo customer on the page. For a freelancer or content creator, keep=false unless the page shows they need that craft or audience now.
 - reason: 2 sentences on why this is a good partnership. No "CORE product". No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction. Never justify the pick with a plumber, wedding, or other sample vertical.
 - If it is a nice-to-have or only useful to a demo site they generated, set keep=false and reason="".`;
 
@@ -283,9 +284,6 @@ async function pickMatches(
   for (const match of parsed.matches ?? []) {
     const listing = byId.get(match.id);
     if (!listing || seen.has(listing.id)) continue;
-    if (isStaffingListing(listing) && candidates.some((row) => !isStaffingListing(row))) {
-      continue;
-    }
     const reason = cleanReason(brief, listing, match.reason);
     if (!reason) continue;
     seen.add(listing.id);
@@ -301,9 +299,7 @@ async function reasonMatches(
   candidates: Array<CatalogListing & { similarity: number; explore_rank: number }>,
   excerpt: string,
 ): Promise<SuggestionMatch[]> {
-  const pool = candidates
-    .filter((listing) => !isStaffingListing(listing))
-    .slice(0, 8);
+  const pool = candidates.slice(0, 8);
   if (pool.length === 0) return [];
 
   const raw = await lunaJson(
@@ -344,8 +340,7 @@ function fallbackFromScrape(
   candidates: Array<CatalogListing & { similarity: number; explore_rank: number }>,
 ): SuggestionMatch[] {
   const observed = brief.what_it_is || firstScrapeLine(excerpt) || brief.title;
-  const preferred = candidates.filter((listing) => !isStaffingListing(listing));
-  const pool = preferred.length > 0 ? preferred : candidates;
+  const pool = candidates;
 
   return pool.slice(0, 3).map((listing) =>
     toMatch(listing, scrapeFallbackReason(listing, observed)),
@@ -441,9 +436,7 @@ function coreContext(brief: CoreBrief): string[] {
 }
 
 function isJobTitle(value: string): boolean {
-  return /freelance|copywriter|product designer|hire a|need a designer|need a developer|mvp and apis/i.test(
-    value,
-  );
+  return /hire a|need a designer|need a developer|mvp and apis/i.test(value);
 }
 
 function isDemoVerticalTalk(value: string): boolean {
@@ -475,19 +468,12 @@ function candidateForPrompt(
   };
 }
 
-function isStaffingListing(listing: CatalogListing): boolean {
-  if (listing.kind === "freelancer" || listing.kind === "content_creator") return true;
-  return /freelance|copy and positioning|product design for early-stage/i.test(
-    `${listing.tagline} ${listing.description}`,
-  );
-}
-
 function kindPriority(kind: CatalogListing["kind"]): number {
   if (kind === "startup") return 0;
   if (kind === "agency") return 1;
   if (kind === "consumer_app") return 2;
-  if (kind === "content_creator") return 3;
-  return 4;
+  if (kind === "freelancer" || kind === "content_creator") return 2;
+  return 3;
 }
 
 function uniqueStrings(values: string[]): string[] {
