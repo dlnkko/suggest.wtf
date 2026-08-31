@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const WORDS = ["startup", "app", "profile", "agency"] as const;
+const WORDS = ["startup", "app", "agency"] as const;
 
 export function HeroHeadline() {
   const [index, setIndex] = useState(0);
