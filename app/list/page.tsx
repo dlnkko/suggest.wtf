@@ -43,8 +43,8 @@ export default async function ListPage({
           Show up when someone pastes a URL.
         </h1>
         <p className="mt-5 max-w-md text-[15px] leading-7 text-[var(--muted)]">
-          Pick a price. $20 is a maximum of 40 clicks. After you save, you can’t
-          edit the listing.
+          Each click takes $0.50 from your credits. You can’t edit after you
+          save.
         </p>
         <div className="mt-10 max-w-xl">
           <ListingForm errorCode={error} />
