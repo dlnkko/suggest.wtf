@@ -1,6 +1,7 @@
 import { SiteHeader } from "@/components/site-header";
 import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${instrument.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="relative min-h-full flex flex-col">
+        <Script
+          data-website-id="dfid_DCmZlsTMcHMjL21zVhaPn"
+          data-domain="suggest.wtf"
+          src="https://datafa.st/js/script.js"
+          strategy="afterInteractive"
+        />
         <div className="site-bg" aria-hidden="true" />
         <SiteHeader />
         <div className="relative z-10 flex flex-1 flex-col">{children}</div>
