@@ -9,9 +9,8 @@ import { faviconUrl } from "@/lib/url";
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  "Reading your site",
-  "Finding the opening",
-  "Matching the catalog",
+  "Understanding your site",
+  "Suggesting the best options",
 ];
 
 function siteName(title: string): string {
@@ -53,10 +52,7 @@ export function SuggestRun({
     setResult(null);
     setError(null);
     setStep(0);
-    const timers = [
-      window.setTimeout(() => setStep(1), 1200),
-      window.setTimeout(() => setStep(2), 2800),
-    ];
+    const timers = [window.setTimeout(() => setStep(1), 1600)];
 
     async function run() {
       try {
@@ -138,15 +134,7 @@ export function SuggestRun({
             </p>
           ) : (
             <div className="mt-12">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                Leverage
-              </p>
-              {!result.matches.some((match) => !match.house) ? (
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  Starter picks. Nobody has paid to own this spot yet.
-                </p>
-              ) : null}
-              <ul className="mt-4 flex flex-col gap-4">
+              <ul className="flex flex-col gap-4">
                 {result.matches.map((match, index) => (
                   <li
                     key={match.id}
@@ -184,27 +172,11 @@ export function SuggestRun({
             </div>
           )}
 
-          {result.site.needs.length > 0 ? (
-            <div className="mt-12">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                Openings
-              </p>
-              <ul className="mt-4 flex flex-col gap-3">
-                {result.site.needs.map((need) => (
-                  <li key={need} className="text-sm leading-6 text-[var(--muted)]">
-                    <span className="text-[var(--foreground)]">{need}</span>
-                    <span className="block">Nobody paid to own this yet.</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <div className="mt-12">
-            <p className="text-sm leading-6 text-[var(--muted)]">
+          <div className="mt-16">
+            <p className="headline-page max-w-xl">
               Your product can show up here when someone like you pastes a URL.
             </p>
-            <Button href="/list" variant="pill" className="mt-4 px-4 py-2 text-sm">
+            <Button href="/list" variant="pill" className="mt-6 px-7 py-3 text-base">
               Get listed for $20
             </Button>
           </div>

@@ -9,6 +9,8 @@ export function stripProcessTalk(text: string): string {
     .replace(/\bscraped (?:landing page|page|site)\b/gi, "their page")
     .replace(/\bthe scrape\b/gi, "their page")
     .replace(/\bscrape\b/gi, "page")
+    .replace(/\bthe CORE product\b/gi, "this site")
+    .replace(/\bCORE product\b/gi, "this site")
     .replace(/\s{2,}/g, " ")
     .replace(/^[,.\s]+/, "")
     .trim();

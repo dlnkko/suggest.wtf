@@ -59,7 +59,7 @@ Rules:
 - Do not recommend clones of the visitor's product.
 - Cover distinct needs. Do not pick two CRMs or two analytics tools.
 - Use each candidate's sells, serves, helps_with, proof, and avoid. Do not pick a listing if avoid matches this URL.
-- reason: 2 sentences about the CORE product. Mention a concrete detail of what they sell. Then say how this listing fills that hole. Never argue from a demo vertical. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
+- reason: 2 sentences on why this listing is a good partner for what they sell. Mention a concrete detail of the offer, then how the listing helps. Never write "CORE product", "core product", or "the company". Never argue from a demo vertical. Never say scrape, crawled, extracted, or that you analyzed a dump. Do not start with the visitor's name. Do not restate the tagline. English.`;
 
 const REASON_SYSTEM = `You write why a catalog listing is necessary for the CORE product on this URL.
 
@@ -68,7 +68,7 @@ Return JSON only:
 
 Rules:
 - keep=true only if the listing helps the CORE product now, not a demo customer on the page.
-- reason: 2 personalized sentences about the core product. No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction. Never justify the pick with a plumber, wedding, or other sample vertical.
+- reason: 2 sentences on why this is a good partnership. No "CORE product". No visitor name prefix. No generic "worth a look" lines. Never mention scrape, crawling, or extraction. Never justify the pick with a plumber, wedding, or other sample vertical.
 - If it is a nice-to-have or only useful to a demo site they generated, set keep=false and reason="".`;
 
 export async function matchListings(input: {
